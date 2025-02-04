@@ -1,13 +1,4 @@
-local Plugin = {
-	["PluginName"] = " aimbot",
-	["PluginDescription"] = "yes",
-	["Commands"] = {
-		["aimbot"] = {
-			["ListName"] = "aimbot",
-			["Description"] = "aimbot yes",
-			["Aliases"] = {"ab"},
-			["Function"] = function(args, speaker)
-				-- Yes, I know This Is Shit.
+-- Yes, I know This Is Shit.
 local PLAYER = game.Players.LocalPlayer
 local CurrentCam  = game.Workspace.CurrentCamera
 local UIS = game:GetService("UserInputService")-- Made By Mick Gordon
@@ -1947,10 +1938,3 @@ game.Players.PlayerAdded:Connect(function(plr)
 	AddBox(plr)
 	AddTracers(plr)
 end)
-			end
-		},
-	}
-}
-return Plugin
-
-Explain
