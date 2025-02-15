@@ -1,0 +1,6 @@
+local args = {
+    [1] = "Quest",
+    [2] = "Roja"
+}
+
+game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Server"):WaitForChild("Server"):FireServer(unpack(args))
