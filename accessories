@@ -1,0 +1,31 @@
+local args = {
+    [1] = "UpdateInventory",
+    [2] = "Accessory",
+    [3] = "Champion's Earrings"
+}
+
+game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Server"):WaitForChild("Server"):FireServer(unpack(args))
+wait()
+local args = {
+    [1] = "UpdateInventory",
+    [2] = "Accessory",
+    [3] = "Champion's Earrings"
+}
+
+game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Server"):WaitForChild("Server"):FireServer(unpack(args))
+wait()
+local args = {
+    [1] = "UpdateInventory",
+    [2] = "Accessory",
+    [3] = "Jogo's Cloak"
+}
+
+game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Server"):WaitForChild("Server"):FireServer(unpack(args))
+wait()
+local args = {
+    [1] = "UpdateInventory",
+    [2] = "Accessory",
+    [3] = "Jogo's Cloak"
+}
+
+game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Server"):WaitForChild("Server"):FireServer(unpack(args))
