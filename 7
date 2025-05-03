@@ -1,0 +1,12 @@
+local args = {
+	{
+		["\008"] = {
+			{
+				"Waterfall",
+				n = 1
+			}
+		}
+	},
+	{}
+}
+game:GetService("ReplicatedStorage"):WaitForChild("ReliableRedEvent"):FireServer(unpack(args))
