@@ -2149,7 +2149,7 @@ end
 )
 
 newButton(
-"Pause Loops",
+"Toggle Loops",
 function() 
     local count = savedRemotes and #savedRemotes or 0
     if executeLoop then
