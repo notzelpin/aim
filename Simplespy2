@@ -2037,9 +2037,8 @@ local executeLoop = true  -- controls whether loops are running
 local pausedLoops = false -- pause/resume toggle
 
 
--- ======== Loop Code Button (Add & Start Loops) ========
-newButton(
-    "Loop Code",
+-- ======== Loop Code Button ========
+newButton("Loop Code",
     function()
         return "Add selected remote to loops and start it with its cooldown"
     end,
@@ -2049,7 +2048,9 @@ newButton(
             return
         end
 
-        -- Save remote with its cooldown at the moment
+        executeLoop = true -- ensure loops can run
+        if not savedRemotes then savedRemotes = {} end
+
         local loopData = {
             Remote = selected.Remote,
             args = table.clone(selected.args),
@@ -2057,15 +2058,11 @@ newButton(
         }
         table.insert(savedRemotes, loopData)
 
-        -- Start the loop immediately
         task.spawn(function()
             while executeLoop do
-                -- Wait until loops are unpaused
                 while pausedLoops and executeLoop do
-                    task.wait(0.1) -- small wait to prevent freezing
+                    task.wait(0.1)
                 end
-
-                -- If loops are stopped while paused, exit
                 if not executeLoop then break end
 
                 xpcall(function()
@@ -2076,15 +2073,13 @@ newButton(
                     elseif r:IsA("RemoteFunction") then
                         r:InvokeServer(unpack(args))
                     end
-                end, function(err)
-                    warn("Loop error:", err)
-                end)
+                end, warn)
 
-                task.wait(loopData.cooldown) -- use cooldown at time of adding
+                task.wait(loopData.cooldown)
             end
         end)
 
-        TextLabel.Text = ("Added remote to loops (cooldown: %s)"):format(loopData.cooldown)
+        TextLabel.Text = "Added remote to loops (cooldown: "..loopData.cooldown..")"
     end
 )
 
@@ -2113,32 +2108,17 @@ newButton("Run Code",
     end
 )
 
-newButton(
-"Clear Loops",
-function() 
-    return "Stop ALL loops + clear remotes" 
-end,
-function()
-    -- stop execution loop
-    executeLoop = false
-
-    -- clear stored remotes
-    if savedRemotes then
-        table.clear(savedRemotes)
+-- ======== Stop Loops Button ========
+newButton("Clear Loops",
+    function()
+        return "Stop all loops"
+    end,
+    function()
+        executeLoop = false
+        savedRemotes = {} -- clear table so new loops can be added
+        TextLabel.Text = "All loops stopped"
     end
-
-    TextLabel.Text = "All loops stopped + remotes cleared"
-end
 )
-
-
-
-
-
-
-
-
-
 
 -- ======== Pause/Resume Loops Button ========
 newButton(
