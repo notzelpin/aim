@@ -240,122 +240,6 @@ local ImageLabel = Create("ImageLabel",{Parent = CloseButton,BackgroundColor3 = 
 local MaximizeButton = Create("TextButton",{Parent = TopBar,BackgroundColor3 = Color3.new(0.145098, 0.141176, 0.14902),BorderSizePixel = 0,Position = UDim2.new(1, -38, 0, 0),Size = UDim2.new(0, 19, 0, 19),Font = Enum.Font.SourceSans,Text = "",TextColor3 = Color3.new(0, 0, 0),TextSize = 14})
 local ImageLabel_2 = Create("ImageLabel",{Parent = MaximizeButton,BackgroundColor3 = Color3.new(1, 1, 1),BackgroundTransparency = 1,Position = UDim2.new(0, 5, 0, 5),Size = UDim2.new(0, 9, 0, 9),Image = "http://www.roblox.com/asset/?id=5597108117"})
 local MinimizeButton = Create("TextButton",{Parent = TopBar,BackgroundColor3 = Color3.new(0.145098, 0.141176, 0.14902),BorderSizePixel = 0,Position = UDim2.new(1, -57, 0, 0),Size = UDim2.new(0, 19, 0, 19),Font = Enum.Font.SourceSans,Text = "",TextColor3 = Color3.new(0, 0, 0),TextSize = 14})
-
---// Switch Tab Button (toggles SimpleSpyClone)
-local SwitchTabButton = Instance.new("TextButton")
-SwitchTabButton.Name = "SwitchTabButton"
-SwitchTabButton.Size = UDim2.new(0, 30, 0, 30)
-SwitchTabButton.Position = UDim2.new(1, -70, 0, 5) -- sits left of MinimizeButton
-SwitchTabButton.Text = "↔"
-SwitchTabButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-SwitchTabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-SwitchTabButton.Font = Enum.Font.SourceSansBold
-SwitchTabButton.TextSize = 18
-SwitchTabButton.Parent = TopBar -- assuming you have a TopBar frame
-
--- Track toggle state
-local simpleSpyVisible = false
-
--- ScreenGui
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "SimpleSpyClone"
-screenGui.ResetOnSpawn = false
--- Do NOT parent yet! SwitchTabButton will handle visibility
--- screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-
--- Main Frame
-local mainFrame = Instance.new("Frame")
-mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 400, 0, 300)
-mainFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
-mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-mainFrame.BorderSizePixel = 0
-mainFrame.Parent = screenGui
-
--- Left Panel (buttons)
-local leftPanel = Instance.new("Frame")
-leftPanel.Name = "LeftPanel"
-leftPanel.Size = UDim2.new(0, 100, 1, 0)
-leftPanel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-leftPanel.BorderSizePixel = 0
-leftPanel.Parent = mainFrame
-
--- Add multiple Roll buttons
-for i = 1, 6 do
-    local button = Instance.new("TextButton")
-    button.Name = "RollButton"..i
-    button.Size = UDim2.new(1, -10, 0, 35)
-    button.Position = UDim2.new(0, 5, 0, 5 + (i-1)*40)
-    button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    button.BorderSizePixel = 0
-    button.Text = "Roll"
-    button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    button.Parent = leftPanel
-end
-
--- Right Panel (code display)
-local rightPanel = Instance.new("Frame")
-rightPanel.Name = "RightPanel"
-rightPanel.Size = UDim2.new(1, -100, 1, 0)
-rightPanel.Position = UDim2.new(0, 100, 0, 0)
-rightPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-rightPanel.BorderSizePixel = 0
-rightPanel.Parent = mainFrame
-
--- Code Display (TextBox)
-local codeBox = Instance.new("TextBox")
-codeBox.Name = "CodeBox"
-codeBox.Size = UDim2.new(1, -10, 1, -50)
-codeBox.Position = UDim2.new(0, 5, 0, 5)
-codeBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-codeBox.BorderSizePixel = 0
-codeBox.TextColor3 = Color3.fromRGB(255, 0, 0)
-codeBox.Text = "SimpleSpy V3"
-codeBox.TextXAlignment = Enum.TextXAlignment.Left
-codeBox.TextYAlignment = Enum.TextYAlignment.Top
-codeBox.ClearTextOnFocus = false
-codeBox.TextWrapped = true
-codeBox.MultiLine = true
-codeBox.Parent = rightPanel
-
--- Bottom Buttons Panel
-local bottomPanel = Instance.new("Frame")
-bottomPanel.Name = "BottomPanel"
-bottomPanel.Size = UDim2.new(1, -110, 0, 40)
-bottomPanel.Position = UDim2.new(0, 105, 1, -45)
-bottomPanel.BackgroundTransparency = 1
-bottomPanel.Parent = mainFrame
-
-local buttonNames = {"Copy Code", "Loop Code", "Run Code", "Clear Loops", "Toggle Loops", "ClrLogs"}
-for i, name in ipairs(buttonNames) do
-    local b = Instance.new("TextButton")
-    b.Name = name:gsub(" ", "")
-    b.Size = UDim2.new(0, 60, 1, 0)
-    b.Position = UDim2.new(0, (i-1)*65, 0, 0)
-    b.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    b.BorderSizePixel = 0
-    b.Text = name
-    b.TextColor3 = Color3.fromRGB(255, 255, 255)
-    b.Parent = bottomPanel
-end
-
-
-
-
-
-
-
-SwitchTabButton.MouseButton1Click:Connect(function()
-    simpleSpyVisible = not simpleSpyVisible
-    if simpleSpyVisible then
-        screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-    else
-        screenGui.Parent = nil -- hides the GUI
-    end
-end)
-
-
-
 local ImageLabel_3 = Create("ImageLabel",{Parent = MinimizeButton,BackgroundColor3 = Color3.new(1, 1, 1),BackgroundTransparency = 1,Position = UDim2.new(0, 5, 0, 5),Size = UDim2.new(0, 9, 0, 9),Image = "http://www.roblox.com/asset/?id=5597105827"})
 
 local ToolTip = Create("Frame",{Parent = SimpleSpy3,BackgroundColor3 = Color3.fromRGB(26, 26, 26),BackgroundTransparency = 0.1,BorderColor3 = Color3.new(1, 1, 1),Size = UDim2.new(0, 200, 0, 50),ZIndex = 3,Visible = false})
@@ -2153,8 +2037,9 @@ local executeLoop = true  -- controls whether loops are running
 local pausedLoops = false -- pause/resume toggle
 
 
--- ======== Loop Code Button ========
-newButton("Loop Code",
+-- ======== Loop Code Button (Add & Start Loops) ========
+newButton(
+    "Loop Code",
     function()
         return "Add selected remote to loops and start it with its cooldown"
     end,
@@ -2164,9 +2049,7 @@ newButton("Loop Code",
             return
         end
 
-        executeLoop = true -- ensure loops can run
-        if not savedRemotes then savedRemotes = {} end
-
+        -- Save remote with its cooldown at the moment
         local loopData = {
             Remote = selected.Remote,
             args = table.clone(selected.args),
@@ -2174,11 +2057,15 @@ newButton("Loop Code",
         }
         table.insert(savedRemotes, loopData)
 
+        -- Start the loop immediately
         task.spawn(function()
             while executeLoop do
+                -- Wait until loops are unpaused
                 while pausedLoops and executeLoop do
-                    task.wait(0.1)
+                    task.wait(0.1) -- small wait to prevent freezing
                 end
+
+                -- If loops are stopped while paused, exit
                 if not executeLoop then break end
 
                 xpcall(function()
@@ -2189,13 +2076,15 @@ newButton("Loop Code",
                     elseif r:IsA("RemoteFunction") then
                         r:InvokeServer(unpack(args))
                     end
-                end, warn)
+                end, function(err)
+                    warn("Loop error:", err)
+                end)
 
-                task.wait(loopData.cooldown)
+                task.wait(loopData.cooldown) -- use cooldown at time of adding
             end
         end)
 
-        TextLabel.Text = "Added remote to loops (cooldown: "..loopData.cooldown..")"
+        TextLabel.Text = ("Added remote to loops (cooldown: %s)"):format(loopData.cooldown)
     end
 )
 
@@ -2224,17 +2113,32 @@ newButton("Run Code",
     end
 )
 
--- ======== Stop Loops Button ========
-newButton("Clear Loops",
-    function()
-        return "Stop all loops"
-    end,
-    function()
-        executeLoop = false
-        savedRemotes = {} -- clear table so new loops can be added
-        TextLabel.Text = "All loops stopped"
+newButton(
+"Clear Loops",
+function() 
+    return "Stop ALL loops + clear remotes" 
+end,
+function()
+    -- stop execution loop
+    executeLoop = false
+
+    -- clear stored remotes
+    if savedRemotes then
+        table.clear(savedRemotes)
     end
+
+    TextLabel.Text = "All loops stopped + remotes cleared"
+end
 )
+
+
+
+
+
+
+
+
+
 
 -- ======== Pause/Resume Loops Button ========
 newButton(
@@ -2321,6 +2225,11 @@ newButton(
         currentCooldown = cooldowns[cooldownIndex]
 
         TextLabel.Text = ("Cooldown set to %s"):format(tostring(currentCooldown))
+
+        -- Optional: also do the normal Block behavior
+        if selected then
+            blocklist[OldDebugId(selected.Remote)] = true
+        end
     end
 )
 
