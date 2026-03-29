@@ -2225,11 +2225,6 @@ newButton(
         currentCooldown = cooldowns[cooldownIndex]
 
         TextLabel.Text = ("Cooldown set to %s"):format(tostring(currentCooldown))
-
-        -- Optional: also do the normal Block behavior
-        if selected then
-            blocklist[OldDebugId(selected.Remote)] = true
-        end
     end
 )
 
