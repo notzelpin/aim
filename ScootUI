@@ -5388,11 +5388,11 @@ local Library do
                 Debounce = false 
                 Items["Window"].Instance.Visible = Window.IsOpen
                 if Window.IsOpen then
-                    Items["MouseBackground"].Instance.Visible = true
-                    UserInputService.MouseIconEnabled = false
+                    Items["MouseBackground"].Instance.Visible = false
+                    UserInputService.MouseIconEnabled = true
                 else
-                    Items["MouseBackground"].Instance.Visible = true
-                    UserInputService.MouseIconEnabled = false
+                    Items["MouseBackground"].Instance.Visible = false
+                    UserInputService.MouseIconEnabled = true
                 end
             end)
         end
