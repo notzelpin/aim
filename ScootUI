@@ -5273,38 +5273,7 @@ local Library do
                 BackgroundColor3 = FromRGB(255, 255, 255)
             })
 
-            Items["MouseBackground"] = Instances:Create("Frame", {
-                Parent = Library.Holder.Instance,
-                Name = "\0",
-                BackgroundTransparency = 1,
-                Position = UDim2New(0, 0, 0, 0),
-                BorderColor3 = FromRGB(0, 0, 0),
-                Size = UDim2New(0, 16, 0, 16),
-                BorderSizePixel = 0,
-                ZIndex = 9999,
-                BackgroundColor3 = FromRGB(255, 255, 255)
-            })
 
-            Items["MouseImage"] = Instances:Create("ImageLabel", {
-                Parent = Items["MouseBackground"].Instance,
-                Name = "\0",
-                BorderColor3 = FromRGB(0, 0, 0),
-                Image = "rbxassetid://76631660114196",
-                BackgroundTransparency = 1,
-                Size = UDim2New(1, 0, 1, 0),
-                BorderSizePixel = 0,
-                ZIndex = 9999,
-                BackgroundColor3 = FromRGB(255, 255, 255)
-            })  Items["MouseImage"]:AddToTheme({ImageColor3 = "Accent"})
-
-            Instances:Create("UIGradient", {
-                Parent = Items["MouseImage"].Instance,
-                Name = "\0",
-                Rotation = 90,
-                Color = RGBSequence{RGBSequenceKeypoint(0, FromRGB(255, 255, 255)), RGBSequenceKeypoint(1, FromRGB(99, 108, 117))}
-            })
-
-            UserInputService.MouseIconEnabled = false
 
             Window.Items = Items
         end
@@ -5331,10 +5300,7 @@ local Library do
             Items["Search"]:Tween(nil, {BackgroundColor3 = Library.Theme.Background})
         end)
 
-        Library:Connect(RunService.RenderStepped, function()
-            local MouseLocation = UserInputService:GetMouseLocation() 
-            Items["MouseBackground"].Instance.Position = UDim2New(0, MouseLocation.X - 1, 0, MouseLocation.Y - 56)           
-        end)
+
 
         local OldSizes = { }
 
@@ -5387,13 +5353,6 @@ local Library do
             NewTween.Tween.Completed:Connect(function()
                 Debounce = false 
                 Items["Window"].Instance.Visible = Window.IsOpen
-                if Window.IsOpen then
-                    Items["MouseBackground"].Instance.Visible = false
-                    UserInputService.MouseIconEnabled = true
-                else
-                    Items["MouseBackground"].Instance.Visible = false
-                    UserInputService.MouseIconEnabled = true
-                end
             end)
         end
 
