@@ -5391,8 +5391,8 @@ local Library do
                     Items["MouseBackground"].Instance.Visible = true
                     UserInputService.MouseIconEnabled = false
                 else
-                    Items["MouseBackground"].Instance.Visible = false
-                    UserInputService.MouseIconEnabled = true
+                    Items["MouseBackground"].Instance.Visible = true
+                    UserInputService.MouseIconEnabled = false
                 end
             end)
         end
