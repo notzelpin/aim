@@ -217,6 +217,7 @@ local F = {
 	AutoAccessoryBoss = "None",
 	AutoAccessoryGamemode = "None",
 	AutoReplay = false,
+	AutoReplayTower = false,
 	PityBossEnabled = false,
 	PityUseDiff = "Normal",
 }
@@ -374,6 +375,7 @@ local SaveableKeys = {
 	"AutoAccessoryBoss",
 	"AutoAccessoryGamemode",
 	"AutoReplay",
+	"AutoReplayTower",
 	"PityBossEnabled",
 	"PityUseDiff",
 	"PityBuildBosses",
@@ -8081,6 +8083,15 @@ do
 		end,
 	}).Link
 		:AddHelper({ Text = "Auto-enters Infinite Tower portal when not inside" })
+	ITSec:AddToggle({
+		Name = "Auto Replay Tower",
+		Flag = "AutoReplayTower",
+		Default = F.AutoReplayTower or false,
+		Callback = function(v)
+			F.AutoReplayTower = v
+		end,
+	}).Link
+		:AddHelper({ Text = "Auto-votes to replay tower every 3 seconds" })
 	ITSec:AddDropdown({
 		Name = "Stand Position",
 		Default = F.TowerFarmMode,
@@ -10178,6 +10189,25 @@ task.spawn(function()
 			fn.BuyMerchantItems()
 		end
 		task.wait(8)
+	end
+end)
+task.spawn(function()
+	while S.Running do
+		if F.AutoReplayTower then
+			pcall(function()
+				local args = {
+					"sponsor"
+				}
+				game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("DungeonWaveReplayVote"):FireServer(unpack(args))
+			end)
+			pcall(function()
+				local args = {
+					"start"
+				}
+				game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("DungeonWaveVote"):FireServer(unpack(args))
+			end)
+		end
+		task.wait(3)
 	end
 end)
 if F.AutoReplay and (F.AutoInfiniteTower or F.AutoDungeon or F.AutoBossRush) then
