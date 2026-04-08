@@ -241,6 +241,7 @@ local MaximizeButton = Create("TextButton",{Parent = TopBar,BackgroundColor3 = C
 local ImageLabel_2 = Create("ImageLabel",{Parent = MaximizeButton,BackgroundColor3 = Color3.new(1, 1, 1),BackgroundTransparency = 1,Position = UDim2.new(0, 5, 0, 5),Size = UDim2.new(0, 9, 0, 9),Image = "http://www.roblox.com/asset/?id=5597108117"})
 local MinimizeButton = Create("TextButton",{Parent = TopBar,BackgroundColor3 = Color3.new(0.145098, 0.141176, 0.14902),BorderSizePixel = 0,Position = UDim2.new(1, -57, 0, 0),Size = UDim2.new(0, 19, 0, 19),Font = Enum.Font.SourceSans,Text = "",TextColor3 = Color3.new(0, 0, 0),TextSize = 14})
 local ImageLabel_3 = Create("ImageLabel",{Parent = MinimizeButton,BackgroundColor3 = Color3.new(1, 1, 1),BackgroundTransparency = 1,Position = UDim2.new(0, 5, 0, 5),Size = UDim2.new(0, 9, 0, 9),Image = "http://www.roblox.com/asset/?id=5597105827"})
+local LoopsListButton = Create("TextButton",{Parent = TopBar,BackgroundColor3 = Color3.new(0.145098, 0.141176, 0.14902),BorderSizePixel = 0,Position = UDim2.new(1, -76, 0, 0),Size = UDim2.new(0, 19, 0, 19),Font = Enum.Font.SourceSansBold,Text = "L",TextColor3 = Color3.new(1, 1, 1),TextSize = 14})
 
 local ToolTip = Create("Frame",{Parent = SimpleSpy3,BackgroundColor3 = Color3.fromRGB(26, 26, 26),BackgroundTransparency = 0.1,BorderColor3 = Color3.new(1, 1, 1),Size = UDim2.new(0, 200, 0, 50),ZIndex = 3,Visible = false})
 local TextLabel = Create("TextLabel",{Parent = ToolTip,BackgroundColor3 = Color3.new(1, 1, 1),BackgroundTransparency = 1,Position = UDim2.new(0, 2, 0, 2),Size = UDim2.new(0, 196, 0, 46),ZIndex = 3,Font = Enum.Font.SourceSans,Text = "This is some slightly longer text.",TextColor3 = Color3.new(1, 1, 1),TextSize = 14,TextWrapped = true,TextXAlignment = Enum.TextXAlignment.Left,TextYAlignment = Enum.TextYAlignment.Top})
@@ -2100,6 +2101,116 @@ local savedRemotes = {}
 local executeLoop = true  -- controls whether loops are running
 local pausedLoops = false -- pause/resume toggle
 
+local LoopsGui = Create("Frame",{Parent = SimpleSpy3,BackgroundColor3 = Color3.fromRGB(37, 36, 38),BorderSizePixel = 0,Position = UDim2.new(0.5, -150, 0.5, -100),Size = UDim2.new(0, 300, 0, 300),Visible = false,Active = true,Draggable = true,ZIndex = 5})
+local LoopsTopBar = Create("Frame",{Parent = LoopsGui,BackgroundColor3 = Color3.fromRGB(26, 26, 26),BorderSizePixel = 0,Size = UDim2.new(1, 0, 0, 20),ZIndex = 5})
+local LoopsTitle = Create("TextLabel",{Parent = LoopsTopBar,BackgroundTransparency = 1,Position = UDim2.new(0, 5, 0, 0),Size = UDim2.new(1, -70, 1, 0),Font = Enum.Font.SourceSansBold,Text = "Running Loops",TextColor3 = Color3.new(1, 1, 1),TextSize = 14,TextXAlignment = Enum.TextXAlignment.Left,ZIndex = 5})
+local LoopsCopyAllButton = Create("TextButton",{Parent = LoopsTopBar,BackgroundColor3 = Color3.fromRGB(50, 50, 50),BorderSizePixel = 0,Position = UDim2.new(1, -65, 0, 2),Size = UDim2.new(0, 40, 0, 16),Font = Enum.Font.SourceSansBold,Text = "Copy",TextColor3 = Color3.new(1, 1, 1),TextSize = 12,ZIndex = 5})
+local LoopsCloseButton = Create("TextButton",{Parent = LoopsTopBar,BackgroundColor3 = Color3.fromRGB(26, 26, 26),BorderSizePixel = 0,Position = UDim2.new(1, -20, 0, 0),Size = UDim2.new(0, 20, 0, 20),Font = Enum.Font.SourceSansBold,Text = "X",TextColor3 = Color3.new(1, 0, 0),TextSize = 14,ZIndex = 5})
+
+LoopsCopyAllButton.MouseButton1Click:Connect(function()
+    local allCode = {"-- SimpleSpy Exported Loops\n"}
+    for _, loopData in next, savedRemotes do
+        local loopScript = string.format([=[
+if getgenv().SimpleSpyAddLoop then
+    getgenv().SimpleSpyAddLoop(%q, %s)
+else
+    task.spawn(function()
+        while task.wait(%s) do
+            pcall(function()
+                local fn = loadstring(%q)
+                if fn then fn() end
+            end)
+        end
+    end)
+end
+]=], loopData.code, tostring(loopData.cooldown), tostring(loopData.cooldown), loopData.code)
+        table.insert(allCode, loopScript)
+    end
+    if setclipboard then
+        setclipboard(table.concat(allCode, "\n"))
+    end
+    LoopsCopyAllButton.Text = "Copied!"
+    task.delay(1, function()
+        LoopsCopyAllButton.Text = "Copy"
+    end)
+end)
+local LoopsScroll = Create("ScrollingFrame",{Parent = LoopsGui,BackgroundColor3 = Color3.fromRGB(37, 36, 38),BorderSizePixel = 0,Position = UDim2.new(0, 0, 0, 20),Size = UDim2.new(1, 0, 1, -20),CanvasSize = UDim2.new(0, 0, 0, 0),ScrollBarThickness = 4,ZIndex = 5})
+local LoopsLayout = Create("UIListLayout",{Parent = LoopsScroll,HorizontalAlignment = Enum.HorizontalAlignment.Center,SortOrder = Enum.SortOrder.LayoutOrder,Padding = UDim.new(0, 5)})
+
+LoopsCloseButton.MouseButton1Click:Connect(function()
+    LoopsGui.Visible = false
+end)
+
+local function UpdateLoopsGui()
+    if not LoopsGui then return end
+    for _, child in next, LoopsScroll:GetChildren() do
+        if child:IsA("Frame") then
+            child:Destroy()
+        end
+    end
+    local totalY = 0
+    for i, loopData in next, savedRemotes do
+        local loopFrame = Create("Frame",{Parent = LoopsScroll,BackgroundColor3 = Color3.fromRGB(53, 52, 55),BorderSizePixel = 0,Size = UDim2.new(1, -10, 0, 120),ZIndex = 5})
+        local loopLabel = Create("TextLabel",{Parent = loopFrame,BackgroundTransparency = 1,Position = UDim2.new(0, 5, 0, 0),Size = UDim2.new(1, -10, 0, 15),Font = Enum.Font.SourceSansBold,Text = "Loop " .. i .. " (Cooldown: " .. tostring(loopData.cooldown) .. ")",TextColor3 = Color3.new(1, 1, 1),TextSize = 14,TextXAlignment = Enum.TextXAlignment.Left,ZIndex = 5})
+        local loopCodeBox = Create("TextBox",{Parent = loopFrame,BackgroundColor3 = Color3.new(0.0823529, 0.0745098, 0.0784314),BorderSizePixel = 0,Position = UDim2.new(0, 5, 0, 15),Size = UDim2.new(1, -10, 1, -40),Font = Enum.Font.Code,Text = loopData.code,TextColor3 = Color3.new(1, 1, 1),TextSize = 12,TextXAlignment = Enum.TextXAlignment.Left,TextYAlignment = Enum.TextYAlignment.Top,ClearTextOnFocus = false,TextEditable = false,TextWrapped = true,ZIndex = 5})
+        
+        local toggleButton = Create("TextButton",{Parent = loopFrame,BackgroundColor3 = loopData.paused and Color3.fromRGB(150, 50, 50) or Color3.fromRGB(50, 150, 50),BorderSizePixel = 0,Position = UDim2.new(0, 5, 1, -20),Size = UDim2.new(0.5, -7, 0, 15),Font = Enum.Font.SourceSansBold,Text = loopData.paused and "Resume" or "Pause",TextColor3 = Color3.new(1, 1, 1),TextSize = 14,ZIndex = 5})
+        local clearButton = Create("TextButton",{Parent = loopFrame,BackgroundColor3 = Color3.fromRGB(150, 50, 50),BorderSizePixel = 0,Position = UDim2.new(0.5, 2, 1, -20),Size = UDim2.new(0.5, -7, 0, 15),Font = Enum.Font.SourceSansBold,Text = "Clear",TextColor3 = Color3.new(1, 1, 1),TextSize = 14,ZIndex = 5})
+        
+        toggleButton.MouseButton1Click:Connect(function()
+            loopData.paused = not loopData.paused
+            UpdateLoopsGui()
+        end)
+        
+        clearButton.MouseButton1Click:Connect(function()
+            loopData.deleted = true
+            local idx = table.find(savedRemotes, loopData)
+            if idx then
+                table.remove(savedRemotes, idx)
+            end
+            UpdateLoopsGui()
+        end)
+        totalY = totalY + 125
+    end
+    LoopsScroll.CanvasSize = UDim2.new(0, 0, 0, totalY)
+end
+
+LoopsListButton.MouseButton1Click:Connect(function()
+    UpdateLoopsGui()
+    LoopsGui.Visible = not LoopsGui.Visible
+end)
+
+
+getgenv().SimpleSpyAddLoop = function(code, cooldown)
+    if not savedRemotes then savedRemotes = {} end
+    executeLoop = true
+    local loopData = {
+        code = code,
+        cooldown = tonumber(cooldown) or 0.1
+    }
+    table.insert(savedRemotes, loopData)
+    if UpdateLoopsGui then UpdateLoopsGui() end
+
+    task.spawn(function()
+        while executeLoop do
+            while (pausedLoops or loopData.paused) and executeLoop and not loopData.deleted do
+                task.wait(0.1)
+            end
+            if not executeLoop or loopData.deleted then break end
+
+            xpcall(function()
+                local fn, err = loadstring(loopData.code)
+                if fn then
+                    fn()
+                else
+                    warn("[SimpleSpy Loop] loadstring error: " .. tostring(err))
+                end
+            end, warn)
+
+            task.wait(loopData.cooldown)
+        end
+    end)
+end
 
 -- ======== Loop Code Button ========
 newButton("Loop Code",
@@ -2113,36 +2224,9 @@ newButton("Loop Code",
             return
         end
 
-        executeLoop = true -- ensure loops can run
-        if not savedRemotes then savedRemotes = {} end
+        getgenv().SimpleSpyAddLoop(codeToLoop, currentCooldown)
 
-        local loopData = {
-            code = codeToLoop,
-            cooldown = currentCooldown
-        }
-        table.insert(savedRemotes, loopData)
-
-        task.spawn(function()
-            while executeLoop do
-                while pausedLoops and executeLoop do
-                    task.wait(0.1)
-                end
-                if not executeLoop then break end
-
-                xpcall(function()
-                    local fn, err = loadstring(loopData.code)
-                    if fn then
-                        fn()
-                    else
-                        warn("[SimpleSpy Loop] loadstring error: " .. tostring(err))
-                    end
-                end, warn)
-
-                task.wait(loopData.cooldown)
-            end
-        end)
-
-        TextLabel.Text = "Added code to loops (cooldown: "..loopData.cooldown..")"
+        TextLabel.Text = "Added code to loops (cooldown: "..tostring(currentCooldown)..")"
     end
 )
 
@@ -2178,6 +2262,7 @@ newButton("Clear Loops",
     function()
         executeLoop = false
         savedRemotes = {} -- clear table so new loops can be added
+        UpdateLoopsGui()
         TextLabel.Text = "All loops stopped"
     end
 )
