@@ -855,6 +855,10 @@ end
 --- Runs on MouseButton1Click of an event frame
 function eventSelect(frame)
     if selected and selected.Log  then
+        -- Save any edits the user made, but only when switching to a different remote
+        if selected.Log ~= frame then
+            selected.GenScript = codebox:getString()
+        end
         if selected.Button then
             spawn(function()
                 TweenService:Create(selected.Button, TweenInfo.new(0.5), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
@@ -1006,12 +1010,15 @@ function newRemote(type, data)
     local connect = Button.MouseButton1Click:Connect(function()
         logthread(running())
         eventSelect(RemoteTemplate)
-        log.GenScript = genScript(log.Remote, log.args)
-        if blocked then
-            log.GenScript = "-- THIS REMOTE WAS PREVENTED FROM FIRING TO THE SERVER BY SIMPLESPY\n\n" .. log.GenScript
-        end
-        if selected == log and RemoteTemplate then
-            eventSelect(RemoteTemplate)
+        if not log.Generated then
+            log.GenScript = genScript(log.Remote, log.args)
+            if blocked then
+                log.GenScript = "-- THIS REMOTE WAS PREVENTED FROM FIRING TO THE SERVER BY SIMPLESPY\n\n" .. log.GenScript
+            end
+            log.Generated = true
+            if selected == log and RemoteTemplate then
+                eventSelect(RemoteTemplate)
+            end
         end
     end)
     layoutOrderNum -= 1
@@ -1931,6 +1938,63 @@ if not getgenv().SimpleSpyExecuted then
             ErrorPrompt("Simple Spy V3 will not function to it's fullest capablity due to your executor not supporting hookmetamethod.",true)
         end
         codebox = Highlight.new(CodeBox)
+
+        -- ============================================================
+        -- EDITABLE CODEBOX OVERLAY
+        -- Creates a TextBox on top of the CodeBox so the user can click
+        -- and edit the generated code directly.
+        -- ============================================================
+        local editScroll = Instance.new("ScrollingFrame")
+        editScroll.Name = "EditScrollFrame"
+        editScroll.Parent = CodeBox
+        editScroll.BackgroundColor3 = Color3.new(0.0823529, 0.0745098, 0.0784314)       editScroll.BackgroundTransparency = 0
+        editScroll.BorderSizePixel = 0
+        editScroll.Size = UDim2.new(1, 0, 1, 0)
+        editScroll.Position = UDim2.new(0, 0, 0, 0)
+        editScroll.ZIndex = 20
+        editScroll.ScrollBarThickness = 4
+        editScroll.ScrollBarImageColor3 = Color3.fromRGB(60, 60, 60)
+        editScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+        editScroll.ClipsDescendants = true
+
+        local editBox = Instance.new("TextBox")
+        editBox.Name = "EditableCodeBox"
+        editBox.Parent = editScroll
+        editBox.BackgroundTransparency = 1
+        editBox.Size = UDim2.new(1, -8, 1, 0)
+        editBox.Position = UDim2.new(0, 4, 0, 2)
+        editBox.Font = Enum.Font.Code
+        editBox.TextSize = 13
+        editBox.TextColor3 = Color3.fromRGB(204, 204, 204)
+        editBox.TextXAlignment = Enum.TextXAlignment.Left
+        editBox.TextYAlignment = Enum.TextYAlignment.Top
+        editBox.ClearTextOnFocus = false
+        editBox.MultiLine = true
+        editBox.TextWrapped = false
+        editBox.Text = ""
+        editBox.ZIndex = 21
+        editBox.BorderSizePixel = 0
+        editBox.AutomaticSize = Enum.AutomaticSize.Y
+
+        -- Keep canvas size updated as user types
+        editBox:GetPropertyChangedSignal("Text"):Connect(function()
+            local textBounds = editBox.TextBounds
+            editScroll.CanvasSize = UDim2.new(0, textBounds.X + 20, 0, textBounds.Y + 10)
+        end)
+
+        -- Monkey-patch codebox:setRaw to also update the editable TextBox
+        local _originalSetRaw = codebox.setRaw
+        codebox.setRaw = function(self, text)
+            editBox.Text = text or ""
+            return _originalSetRaw(self, text)
+        end
+
+        -- Monkey-patch codebox:getString to return the edited TextBox text
+        local _originalGetString = codebox.getString
+        codebox.getString = function(self)
+            return editBox.Text
+        end
+
         logthread(spawn(function()
             local suc,err = pcall(game.HttpGet,game,"https://raw.githubusercontent.com/infyiff/backup/refs/heads/main/SimpleSpyV3/update.txt")
             codebox:setRaw((suc and err) or "")
@@ -2040,11 +2104,12 @@ local pausedLoops = false -- pause/resume toggle
 -- ======== Loop Code Button ========
 newButton("Loop Code",
     function()
-        return "Add selected remote to loops and start it with its cooldown"
+        return "Add the current codebox code to loops (runs edited code via loadstring)"
     end,
     function()
-        if not selected then
-            TextLabel.Text = "No remote selected"
+        local codeToLoop = codebox:getString()
+        if not codeToLoop or codeToLoop == "" then
+            TextLabel.Text = "Codebox is empty"
             return
         end
 
@@ -2052,8 +2117,7 @@ newButton("Loop Code",
         if not savedRemotes then savedRemotes = {} end
 
         local loopData = {
-            Remote = selected.Remote,
-            args = table.clone(selected.args),
+            code = codeToLoop,
             cooldown = currentCooldown
         }
         table.insert(savedRemotes, loopData)
@@ -2066,12 +2130,11 @@ newButton("Loop Code",
                 if not executeLoop then break end
 
                 xpcall(function()
-                    local r = loopData.Remote
-                    local args = loopData.args
-                    if r:IsA("RemoteEvent") or r:IsA("UnreliableRemoteEvent") then
-                        r:FireServer(unpack(args))
-                    elseif r:IsA("RemoteFunction") then
-                        r:InvokeServer(unpack(args))
+                    local fn, err = loadstring(loopData.code)
+                    if fn then
+                        fn()
+                    else
+                        warn("[SimpleSpy Loop] loadstring error: " .. tostring(err))
                     end
                 end, warn)
 
@@ -2079,32 +2142,31 @@ newButton("Loop Code",
             end
         end)
 
-        TextLabel.Text = "Added remote to loops (cooldown: "..loopData.cooldown..")"
+        TextLabel.Text = "Added code to loops (cooldown: "..loopData.cooldown..")"
     end
 )
 
--- Executes the contents of the codebox through loadstring
+-- Executes the edited contents of the codebox through loadstring
 newButton("Run Code",
-    function() return "Click to execute code" end,
+    function() return "Click to execute the code in the codebox (supports edited code)" end,
     function()
-        local Remote = selected and selected.Remote
-        if Remote then
+        local code = codebox:getString()
+        if code and code ~= "" then
             TextLabel.Text = "Executing..."
             xpcall(function()
-                local returnvalue
-                if Remote:IsA("RemoteEvent") or Remote:IsA("UnreliableRemoteEvent") then
-                    returnvalue = Remote:FireServer(unpack(selected.args))
-                elseif Remote:IsA("RemoteFunction") then
-                    returnvalue = Remote:InvokeServer(unpack(selected.args))
+                local fn, err = loadstring(code)
+                if fn then
+                    local returnvalue = fn()
+                    TextLabel.Text = ("Executed successfully!\n%s"):format(v2s(returnvalue))
+                else
+                    TextLabel.Text = ("Loadstring error!\n%s"):format(tostring(err))
                 end
-
-                TextLabel.Text = ("Executed successfully!\n%s"):format(v2s(returnvalue))
             end,function(err)
                 TextLabel.Text = ("Execution error!\n%s"):format(err)
             end)
             return
         end
-        TextLabel.Text = "Source not found"
+        TextLabel.Text = "Codebox is empty"
     end
 )
 
