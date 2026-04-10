@@ -366,12 +366,33 @@ local RunService = game:GetService("RunService")
 local espCache = {}
 local boxCache = {}
 
+local function checkPartVisible(char, part)
+	local origin = camera.CFrame.Position
+	local direction = (part.Position - origin)
+	local params = RaycastParams.new()
+	local ignoreList = {player.Character}
+	params.FilterType = Enum.RaycastFilterType.Blacklist
+	
+	while true do
+		params.FilterDescendantsInstances = ignoreList
+		local ray = workspace:Raycast(origin, direction, params)
+		if ray then
+			if ray.Instance:IsA("BasePart") and ray.Instance.Transparency >= 1 then
+				table.insert(ignoreList, ray.Instance)
+				continue
+			end
+			if ray.Instance:IsDescendantOf(char) then
+				return true
+			end
+			return false
+		end
+		return true
+	end
+end
+
 local function setup(plr)
 	if plr == player then return end
 
-	local h = Instance.new("Highlight")
-	h.OutlineTransparency = 1
-	h.FillTransparency = 0.5
 	local g = Instance.new("BillboardGui")
 	g.Size = UDim2.new(0, 200, 0, 50)
 	g.AlwaysOnTop = true
@@ -384,7 +405,7 @@ local function setup(plr)
 	box.Thickness = 1
 	box.Filled = false
 
-	espCache[plr] = {h = h, g = g, l = l}
+	espCache[plr] = {g = g, l = l, hList = {}}
 	boxCache[plr] = box
 end
 
@@ -398,8 +419,13 @@ RunService.RenderStepped:Connect(function()
 		local root = char and char:FindFirstChild("HumanoidRootPart")
 		local box = boxCache[plr]
 
+		if data.h and data.h.Parent then
+			data.h:Destroy()
+			data.h = nil
+		end
+
 		if not espStates.Enabled or not char then
-			if data.h.Parent ~= nil then data.h.Parent = nil end
+			if data.hList then for _, h in pairs(data.hList) do h.Enabled = false end end
 			if data.g.Parent ~= nil then data.g.Parent = nil end
 			box.Visible = false
 			continue
@@ -414,42 +440,11 @@ RunService.RenderStepped:Connect(function()
 			end
 			
 			if isSameTeam then
-				if data.h.Parent ~= nil then data.h.Parent = nil end
+				if data.hList then for _, h in pairs(data.hList) do h.Enabled = false end end
 				if data.g.Parent ~= nil then data.g.Parent = nil end
 				box.Visible = false
 				continue
 			end
-		end
-
-		local isBehindWall = false
-		if (espStates.WallCheck or espStates.WallCheckTurnoff) and root then
-			local origin = camera.CFrame.Position
-			local direction = (root.Position - origin)
-			local params = RaycastParams.new()
-			local ignoreList = {player.Character}
-			params.FilterType = Enum.RaycastFilterType.Blacklist
-			
-			while true do
-				params.FilterDescendantsInstances = ignoreList
-				local ray = workspace:Raycast(origin, direction, params)
-				if ray then
-					if ray.Instance:IsA("BasePart") and (ray.Instance.Transparency >= 1 or not ray.Instance.CanCollide) then
-						table.insert(ignoreList, ray.Instance)
-						continue
-					end
-					if not ray.Instance:IsDescendantOf(char) then
-						isBehindWall = true
-					end
-				end
-				break
-			end
-		end
-
-		if espStates.WallCheckTurnoff and isBehindWall then
-			if data.h.Parent ~= nil then data.h.Parent = nil end
-			if data.g.Parent ~= nil then data.g.Parent = nil end
-			box.Visible = false
-			continue
 		end
 
 		local defaultColor = Color3.new(1, 0, 0)
@@ -457,13 +452,64 @@ RunService.RenderStepped:Connect(function()
 			defaultColor = plr.TeamColor.Color
 		end
 
-		local color = defaultColor
-		if espStates.WallCheck and isBehindWall then
-			color = Color3.new(1, 1, 1)
+		local anyVisible = false
+		if not data.hList then data.hList = {} end
+
+		if (espStates.WallCheck or espStates.WallCheckTurnoff) then
+			for _, part in ipairs(char:GetDescendants()) do
+				if part:IsA("BasePart") and part.Transparency < 1 then
+					local isVis = checkPartVisible(char, part)
+					if isVis then anyVisible = true end
+					
+					local h = data.hList[part]
+					if not h then
+						h = Instance.new("Highlight")
+						h.OutlineTransparency = 1
+						h.FillTransparency = 0.5
+						h.Adornee = part
+						h.Parent = part
+						data.hList[part] = h
+					end
+					
+					if espStates.WallCheckTurnoff and not isVis then
+						h.Enabled = false
+					else
+						h.Enabled = true
+						h.FillColor = isVis and defaultColor or Color3.new(1, 1, 1)
+					end
+				end
+			end
+		else
+			for _, part in ipairs(char:GetDescendants()) do
+				if part:IsA("BasePart") and part.Transparency < 1 then
+					local h = data.hList[part]
+					if not h then
+						h = Instance.new("Highlight")
+						h.OutlineTransparency = 1
+						h.FillTransparency = 0.5
+						h.Adornee = part
+						h.Parent = part
+						data.hList[part] = h
+					end
+					h.Enabled = true
+					h.FillColor = defaultColor
+				end
+			end
+			anyVisible = true
 		end
 
-		if data.h.Parent ~= char then data.h.Parent = char end
-		data.h.FillColor = color
+		for part, h in pairs(data.hList) do
+			if not part or not part.Parent or not part:IsDescendantOf(char) then
+				h:Destroy()
+				data.hList[part] = nil
+			end
+		end
+
+		if espStates.WallCheckTurnoff and not anyVisible then
+			if data.g.Parent ~= nil then data.g.Parent = nil end
+			box.Visible = false
+			continue
+		end
 
 		if data.g.Parent ~= root then data.g.Parent = root end
 		local text = ""
@@ -505,7 +551,7 @@ local function visibleCheck(part)
 		params.FilterDescendantsInstances = ignoreList
 		local ray = workspace:Raycast(origin, direction, params)
 		if ray then
-			if ray.Instance:IsA("BasePart") and (ray.Instance.Transparency >= 1 or not ray.Instance.CanCollide) then
+			if ray.Instance:IsA("BasePart") and ray.Instance.Transparency >= 1 then
 				table.insert(ignoreList, ray.Instance)
 				continue
 			end
