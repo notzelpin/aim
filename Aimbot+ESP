@@ -1,0 +1,634 @@
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/notzelpin/aim/refs/heads/main/ScootUI"))()
+
+local Window = Library:Window({
+    Logo = "77218680285262",
+    FadeTime = 0.3,
+})
+
+local Watermark = Library:Watermark("This is a watermark")
+local KeybindList = Library:KeybindList()
+
+local espStates = {
+    Enabled = false,
+    Boxes = false,
+    Name = false,
+    TeamColors = false,
+    TeamCheck = false,
+    TeamCheckOption = "Team",
+    WallCheck = false,
+    WallCheckTurnoff = false
+}
+
+local aimbotStates = {
+    Enabled = false,
+    TeamCheck = false,
+    TeamCheckOption = "Team",
+    WallCheck = false,
+    ShowFov = false,
+    FOV = 100,
+    Smoothing = 1,
+    Target = "Head",
+    Aiming = false,
+    AimKey = Enum.UserInputType.MouseButton2,
+    LockMode = "CFrame"
+}
+
+local playerStatuses = {}
+
+local UIS = game:GetService("UserInputService")
+UIS.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.UserInputType == aimbotStates.AimKey or input.KeyCode == aimbotStates.AimKey then
+        aimbotStates.Aiming = true
+    end
+end)
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType == aimbotStates.AimKey or input.KeyCode == aimbotStates.AimKey then
+        aimbotStates.Aiming = false
+    end
+end)
+
+do 
+    local CombatPage = Window:Page({Name = "Aimbot", SubPages = true})
+    local PlayerPage = Window:Page({Name = "Player", Columns = 1})
+    local VisualsPage = Window:Page({Name = "Visuals", SubPages = true})
+    local SettingsPage = Library:CreateSettingsPage(Window, Watermark, KeybindList) 
+    
+    do -- Player page
+        local TargetSection = PlayerPage:Section({Name = "Target Priority", Side = 1})
+        local selectedPlayerSelector = ""
+        
+        local function getPlayerList()
+            local list = {}
+            for _, p in pairs(game.Players:GetPlayers()) do
+                if p ~= game.Players.LocalPlayer then
+                    table.insert(list, p.DisplayName .. " (@" .. p.Name .. ")")
+                end
+            end
+            return list
+        end
+        
+        local statusDropdown
+        local playerDropdown = TargetSection:Dropdown({
+            Name = "Select Player(s)",
+            Items = getPlayerList(),
+            Flag = "PlayerPriorityTarget",
+            Default = {},
+            Multi = true,
+            Callback = function(Value)
+                selectedPlayerSelector = Value
+                if type(Value) == "table" then
+                    local firstItem = next(Value) and (type(Value[1]) == "string" and Value[1] or next(Value))
+                    if type(firstItem) == "string" then
+                        local rawName = firstItem:match("%(@(.*)%)")
+                        if rawName and statusDropdown then
+                            statusDropdown:Set(playerStatuses[rawName] or "neutral")
+                        end
+                    end
+                end
+            end
+        })
+
+        local function applyStatus(selectedStr, statusValue)
+            local rawName = selectedStr:match("%(@(.*)%)")
+            if rawName then
+                playerStatuses[rawName] = statusValue
+            end
+        end
+
+        statusDropdown = TargetSection:Dropdown({
+            Name = "Assignment Status",
+            Items = {"neutral", "priority", "friendly"},
+            Flag = "PlayerPriorityStatus",
+            Default = "neutral",
+            Multi = false,
+            Callback = function(Value)
+                if type(selectedPlayerSelector) == "table" then
+                    for k, v in pairs(selectedPlayerSelector) do
+                        if type(k) == "number" and type(v) == "string" then
+                            applyStatus(v, Value)
+                        elseif type(k) == "string" and v == true then
+                            applyStatus(k, Value)
+                        end
+                    end
+                elseif type(selectedPlayerSelector) == "string" and selectedPlayerSelector ~= "" then
+                    applyStatus(selectedPlayerSelector, Value)
+                end
+            end
+        })
+
+        local refreshButton = TargetSection:Button()
+        refreshButton:Add("Refresh Player List", function()
+            playerDropdown:Refresh(getPlayerList(), false)
+        end)
+    end
+    
+    do -- Combat page
+        local WeaponSubPage = CombatPage:SubPage({Name = "Aimbot", Columns = 2})
+
+        do -- Weapon subpage
+            local RangedWeaponSection = WeaponSubPage:Section({Name = "Aimbot", Side = 1}) do -- Ranged weapon section
+                RangedWeaponSection:Toggle({
+                    Name = "Enabled",
+                    Flag = "RangedWeaponEnabled",
+                    Default = false,
+                    Callback = function(Value)
+                        aimbotStates.Enabled = Value
+                    end
+                }):Keybind({
+                    Flag = "AimbotAimKey",
+                    Default = Enum.UserInputType.MouseButton2,
+                    Mode = "Hold",
+                    Callback = function(Value)
+                        if typeof(Value) == "EnumItem" then
+                            aimbotStates.AimKey = Value
+                        end
+                        if type(Value) == "boolean" then
+                            aimbotStates.Aiming = Value
+                        end
+                    end
+                })
+
+                --Toggle:SetVisibility(<bool>) -> nil
+                --Toggle:Set(<bool>) -> nil
+                --Toggle:Get(<void>) -> Toggle.Value
+
+                RangedWeaponSection:Toggle({
+                    Name = "Team Check",
+                    Flag = "AimbotTeamCheck",
+                    Default = false,
+                    Callback = function(Value)
+                        aimbotStates.TeamCheck = Value
+                    end
+                })
+
+                RangedWeaponSection:Dropdown({
+                    Name = "Team Check Option",
+                    Items = {"Team", "TeamColor"},
+                    Flag = "AimbotTeamCheckOption",
+                    Default = "Team",
+                    Multi = false,
+                    Callback = function(Value)
+                        aimbotStates.TeamCheckOption = Value
+                    end
+                })
+
+                --Toggle:SetVisibility(<bool>) -> nil
+                --Toggle:Set(<bool>) -> nil
+                --Toggle:Get(<void>) -> Toggle.Value
+
+                RangedWeaponSection:Toggle({
+                    Name = "Wall Check",
+                    Flag = "AimbotWallCheck",
+                    Default = false,
+                    Callback = function(Value)
+                        aimbotStates.WallCheck = Value
+                    end
+                })
+
+                --Toggle:SetVisibility(<bool>) -> nil
+                --Toggle:Set(<bool>) -> nil
+                --Toggle:Get(<void>) -> Toggle.Value
+
+                RangedWeaponSection:Toggle({
+                    Name = "Show Fov",
+                    Flag = "AimbotShowFov",
+                    Default = false,
+                    Callback = function(Value)
+                        aimbotStates.ShowFov = Value
+                    end
+                })
+
+                --Toggle:SetVisibility(<bool>) -> nil
+                --Toggle:Set(<bool>) -> nil
+                --Toggle:Get(<void>) -> Toggle.Value
+
+                RangedWeaponSection:Slider({
+                    Name = "FOV",
+                    Flag = "AimbotFOV",
+                    Min = 1,
+                    Suffix = "px",
+                    Max = 500,
+                    Default = 100,
+                    Decimals = 1,
+                    Callback = function(Value)
+                        aimbotStates.FOV = Value
+                    end
+                })
+
+                RangedWeaponSection:Slider({
+                    Name = "Smoothing",
+                    Flag = "AimbotSmoothing",
+                    Min = 0,
+                    Suffix = "",
+                    Max = 1,
+                    Default = 1,
+                    Decimals = 0.01,
+                    Callback = function(Value)
+                        aimbotStates.Smoothing = Value
+                    end
+                })
+
+                --Slider:SetVisibility(<bool>) -> nil
+                --Slider:Set(<number>) -> nil
+                --Slider:Get(<void>) -> Slider.Value
+
+                RangedWeaponSection:Dropdown({
+                    Name = "Target",
+                    Items = {"Head", "HumanoidRootPart"},
+                    Flag = "AimbotTarget",
+                    Default = "Head",
+                    Multi = false,
+                    Callback = function(Value)
+                        aimbotStates.Target = Value
+                    end
+                })
+
+                RangedWeaponSection:Dropdown({
+                    Name = "Lock Mode",
+                    Items = {"CFrame", "mousemoverel"},
+                    Flag = "AimbotLockMode",
+                    Default = "CFrame",
+                    Multi = false,
+                    Callback = function(Value)
+                        aimbotStates.LockMode = Value
+                    end
+                })
+
+                --Dropdown:SetVisibility(<bool>) -> nil
+                --Dropdown:Set(<string>) -> nil
+                --Dropdown:Get(<void>) -> Dropdown.Value
+                --Dropdown:Add(<string>) -> OptionData
+                --Dropdown:Remove(<string>) -> nil
+                --Dropdown:Refresh(<table>, <boolean>) -> nil   
+
+                local Button = RangedWeaponSection:Button()
+                Button:Add("Apply", function()
+                    print("Pressed")
+                end)
+                Button:Add("Reset", function()
+                    print("Pressed 2")
+                end)
+
+                --Button:Add(<string>, <function>)
+            end
+        end
+    end
+    do -- Visuals page
+        local ESPSubPage = VisualsPage:SubPage({Name = "ESP", Columns = 2})
+
+        do -- ESP subpage
+            local ESPSection = ESPSubPage:Section({Name = "Players", Side = 1}) do
+                ESPSection:Toggle({
+                    Name = "Enabled",
+                    Flag = "ESPEnabled",
+                    Default = false,
+                    Callback = function(Value)
+                        espStates.Enabled = Value
+                    end
+                })
+
+                ESPSection:Toggle({
+                    Name = "Boxes",
+                    Flag = "ESPBoxes",
+                    Default = false,
+                    Callback = function(Value)
+                        espStates.Boxes = Value
+                    end
+                })
+                
+                ESPSection:Toggle({
+                    Name = "Name",
+                    Flag = "ESPNames",
+                    Default = false,
+                    Callback = function(Value)
+                        espStates.Name = Value
+                    end
+                })
+
+                ESPSection:Toggle({
+                    Name = "Team Colors",
+                    Flag = "ESPTeamColors",
+                    Default = false,
+                    Callback = function(Value)
+                        espStates.TeamColors = Value
+                    end
+                })
+
+                ESPSection:Toggle({
+                    Name = "Team Check",
+                    Flag = "ESPTeamCheck",
+                    Default = false,
+                    Callback = function(Value)
+                        espStates.TeamCheck = Value
+                    end
+                })
+
+                ESPSection:Dropdown({
+                    Name = "Team Check Option",
+                    Items = {"Team", "TeamColor"},
+                    Flag = "ESPTeamCheckOption",
+                    Default = "Team",
+                    Multi = false,
+                    Callback = function(Value)
+                        espStates.TeamCheckOption = Value
+                    end
+                })
+
+                ESPSection:Toggle({
+                    Name = "Wallcheck",
+                    Flag = "ESPWallCheck",
+                    Default = false,
+                    Callback = function(Value)
+                        espStates.WallCheck = Value
+                    end
+                })
+
+                ESPSection:Toggle({
+                    Name = "Wallcheck (Turnoff)",
+                    Flag = "ESPWallCheckTurnoff",
+                    Default = false,
+                    Callback = function(Value)
+                        espStates.WallCheckTurnoff = Value
+                    end
+                })
+            end
+        end
+    end
+end
+
+--// ESP LOGIC STARTS HERE //--
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+local RunService = game:GetService("RunService")
+
+local espCache = {}
+local boxCache = {}
+
+local function setup(plr)
+	if plr == player then return end
+
+	local h = Instance.new("Highlight")
+	h.OutlineTransparency = 1
+	h.FillTransparency = 0.5
+	local g = Instance.new("BillboardGui")
+	g.Size = UDim2.new(0, 200, 0, 50)
+	g.AlwaysOnTop = true
+	local l = Instance.new("TextLabel", g)
+	l.Size = UDim2.new(1, 0, 1, 0)
+	l.BackgroundTransparency = 1
+	l.TextScaled = true
+
+	local box = Drawing.new("Square")
+	box.Thickness = 1
+	box.Filled = false
+
+	espCache[plr] = {h = h, g = g, l = l}
+	boxCache[plr] = box
+end
+
+for _, p in pairs(Players:GetPlayers()) do setup(p) end
+Players.PlayerAdded:Connect(setup)
+
+-- ESP LOOP
+RunService.RenderStepped:Connect(function()
+	for plr, data in pairs(espCache) do
+		local char = plr.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart")
+		local box = boxCache[plr]
+
+		if not espStates.Enabled or not char then
+			if data.h.Parent ~= nil then data.h.Parent = nil end
+			if data.g.Parent ~= nil then data.g.Parent = nil end
+			box.Visible = false
+			continue
+		end
+
+		if espStates.TeamCheck then
+			local isSameTeam = false
+			if espStates.TeamCheckOption == "TeamColor" then
+				isSameTeam = (plr.TeamColor == player.TeamColor)
+			else
+				isSameTeam = (plr.Team == player.Team)
+			end
+			
+			if isSameTeam then
+				if data.h.Parent ~= nil then data.h.Parent = nil end
+				if data.g.Parent ~= nil then data.g.Parent = nil end
+				box.Visible = false
+				continue
+			end
+		end
+
+		local isBehindWall = false
+		if (espStates.WallCheck or espStates.WallCheckTurnoff) and root then
+			local origin = camera.CFrame.Position
+			local direction = (root.Position - origin)
+			local params = RaycastParams.new()
+			local ignoreList = {player.Character}
+			params.FilterType = Enum.RaycastFilterType.Blacklist
+			
+			while true do
+				params.FilterDescendantsInstances = ignoreList
+				local ray = workspace:Raycast(origin, direction, params)
+				if ray then
+					if ray.Instance:IsA("BasePart") and (ray.Instance.Transparency >= 1 or not ray.Instance.CanCollide) then
+						table.insert(ignoreList, ray.Instance)
+						continue
+					end
+					if not ray.Instance:IsDescendantOf(char) then
+						isBehindWall = true
+					end
+				end
+				break
+			end
+		end
+
+		if espStates.WallCheckTurnoff and isBehindWall then
+			if data.h.Parent ~= nil then data.h.Parent = nil end
+			if data.g.Parent ~= nil then data.g.Parent = nil end
+			box.Visible = false
+			continue
+		end
+
+		local defaultColor = Color3.new(1, 0, 0)
+		if espStates.TeamCheck or espStates.TeamColors then
+			defaultColor = plr.TeamColor.Color
+		end
+
+		local color = defaultColor
+		if espStates.WallCheck and isBehindWall then
+			color = Color3.new(1, 1, 1)
+		end
+
+		if data.h.Parent ~= char then data.h.Parent = char end
+		data.h.FillColor = color
+
+		if data.g.Parent ~= root then data.g.Parent = root end
+		local text = ""
+		if espStates.Name then text = text .. plr.Name .. "\n" end
+		data.l.Text = text
+
+		if espStates.Boxes and root then
+			local pos, vis = camera:WorldToViewportPoint(root.Position)
+			if vis then
+				local topY = camera:WorldToViewportPoint(root.Position + Vector3.new(0, 3, 0)).Y
+				local size = math.abs((topY - pos.Y) * 2)
+				local width = size / 2
+				box.Size = Vector2.new(width, size)
+				box.Position = Vector2.new(pos.X - width/2, pos.Y - size/2)
+				box.Color = color
+				box.Visible = true
+			else
+				box.Visible = false
+			end
+		else
+			box.Visible = false
+		end
+	end
+end)
+--// ESP LOGIC ENDS HERE //--
+
+--// AIMBOT LOGIC STARTS HERE //--
+local function visibleCheck(part)
+	if not aimbotStates.WallCheck then return true end
+
+	local origin = camera.CFrame.Position
+	local direction = (part.Position - origin)
+
+	local params = RaycastParams.new()
+	local ignoreList = {player.Character}
+	params.FilterType = Enum.RaycastFilterType.Blacklist
+
+	while true do
+		params.FilterDescendantsInstances = ignoreList
+		local ray = workspace:Raycast(origin, direction, params)
+		if ray then
+			if ray.Instance:IsA("BasePart") and (ray.Instance.Transparency >= 1 or not ray.Instance.CanCollide) then
+				table.insert(ignoreList, ray.Instance)
+				continue
+			end
+			return ray.Instance:IsDescendantOf(part.Parent)
+		end
+		return true
+	end
+end
+
+-- DRAW
+local circle = Drawing.new("Circle")
+circle.Color = Color3.fromRGB(0,170,255)
+circle.Filled = false
+
+-- AIM LOOP
+RunService:BindToRenderStep("Aimbot", Enum.RenderPriority.Camera.Value + 1, function()
+	local aimCenter
+	if aimbotStates.LockMode == "mousemoverel" then
+		aimCenter = UIS:GetMouseLocation()
+	else
+		aimCenter = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)
+	end
+
+	circle.Position = aimCenter
+	circle.Radius = aimbotStates.FOV
+	circle.Visible = aimbotStates.Enabled and aimbotStates.ShowFov
+
+	if aimbotStates.Enabled and aimbotStates.Aiming then
+		local bestNeutral, distNeutral = nil, aimbotStates.FOV
+		local bestPriority, distPriority = nil, aimbotStates.FOV
+
+		for _, v in pairs(Players:GetPlayers()) do
+			if v ~= player and v.Character then
+				local part
+				
+				if aimbotStates.Target == "HumanoidRootPart" then
+					part = v.Character:FindFirstChild("HumanoidRootPart")
+				else
+					part = v.Character:FindFirstChild("Head") or v.Character:FindFirstChild("HumanoidRootPart")
+				end
+
+				if not part then
+					part = v.Character:FindFirstChildWhichIsA("BasePart")
+				end
+
+				if not part then continue end
+
+				if aimbotStates.TeamCheck then
+					local isSameTeam = false
+					if aimbotStates.TeamCheckOption == "TeamColor" then
+						isSameTeam = (v.TeamColor == player.TeamColor)
+					else
+						isSameTeam = (v.Team == player.Team)
+					end
+					if isSameTeam then continue end
+				end
+
+				local status = playerStatuses[v.Name] or "neutral"
+				if status == "friendly" then continue end
+
+				local pos, onScreen = camera:WorldToViewportPoint(part.Position)
+
+				if onScreen then
+					local mag = (Vector2.new(pos.X, pos.Y) - aimCenter).Magnitude
+					if visibleCheck(part) then
+						if status == "priority" then
+							if mag < distPriority then
+								distPriority = mag
+								bestPriority = part
+							end
+						else
+							if mag < distNeutral then
+								distNeutral = mag
+								bestNeutral = part
+							end
+						end
+					end
+				end
+			end
+		end
+
+		local best = bestPriority or bestNeutral
+
+		if best then
+			if aimbotStates.LockMode == "CFrame" then
+				local newCF = CFrame.new(camera.CFrame.Position, best.Position)
+				camera.CFrame = camera.CFrame:Lerp(newCF, aimbotStates.Smoothing)
+
+				-- FORCE TOOL AIM
+				pcall(function()
+					local char = player.Character
+					if not char then return end
+
+					local tool = char:FindFirstChildOfClass("Tool")
+					if tool then
+						for _, v in pairs(tool:GetDescendants()) do
+							if v:IsA("BasePart") then
+								v.CFrame = CFrame.new(v.Position, best.Position)
+							end
+						end
+					end
+				end)
+				
+				-- FORCE TOOL ALIGNMENT
+				pcall(function()
+					local tool = player.Character and player.Character:FindFirstChildOfClass("Tool")
+					if tool and tool:FindFirstChild("Handle") then
+						tool.Handle.CFrame = CFrame.new(tool.Handle.Position, best.Position)
+					end
+				end)
+			elseif aimbotStates.LockMode == "mousemoverel" then
+				local pos = camera:WorldToViewportPoint(best.Position)
+				local mousePos = UIS:GetMouseLocation()
+				local diffX = pos.X - mousePos.X
+				local diffY = pos.Y - mousePos.Y
+				
+				if mousemoverel then
+					mousemoverel(diffX * aimbotStates.Smoothing, diffY * aimbotStates.Smoothing)
+				end
+			end
+		end
+	end
+end)
+--// AIMBOT LOGIC ENDS HERE //--
+
+Library:Notification("Loaded!", "Menu took "..string.format("%.4f", os.clock() - LoadTick).." seconds to load", 5)
