@@ -1,3 +1,4 @@
+local LoadTick = os.clock()
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/notzelpin/aim/refs/heads/main/ScootUI"))()
 
 local Window = Library:Window({
@@ -52,6 +53,7 @@ do
     local CombatPage = Window:Page({Name = "Aimbot", SubPages = true})
     local PlayerPage = Window:Page({Name = "Player", Columns = 1})
     local VisualsPage = Window:Page({Name = "Visuals", SubPages = true})
+    local ConfigsPage = Window:Page({Name = "Configs", SubPages = true})
     local SettingsPage = Library:CreateSettingsPage(Window, Watermark, KeybindList) 
     
     do -- Player page
@@ -355,6 +357,175 @@ do
             end
         end
     end
+    
+    do -- Configs page
+        local ConfigsSubPage = ConfigsPage:SubPage({Name = "Config Saving", Columns = 1})
+        local ConfigSection = ConfigsSubPage:Section({Name = "Configuration", Side = 1})
+        
+        local function getConfigLists()
+            local list = {}
+            if isfolder(Library.Folders.Configs) then
+                for _, file in ipairs(listfiles(Library.Folders.Configs)) do
+                    local name = file:match("([^/\\]+)%.json$")
+                    if name then
+                        table.insert(list, name)
+                    end
+                end
+            end
+            return list
+        end
+        
+        local ConfigName = ""
+        local AutoloadToggle
+
+        ConfigSection:Textbox({
+            Name = "Config Name",
+            Flag = "CustomConfigName",
+            Default = "",
+            Placeholder = "Type config name...",
+            Callback = function(Value)
+                ConfigName = Value
+            end
+        })
+
+        local ConfigDropdown = ConfigSection:Dropdown({
+            Name = "Select Config",
+            Flag = "SelectedCustomConfig",
+            Items = getConfigLists(),
+            Default = "",
+            Multi = false,
+            Callback = function(Value)
+                ConfigName = Value
+                
+                if AutoloadToggle then
+                    local isAutoloadingThis = false
+                    local autoloadPath = Library.Folders.Configs .. "/autoload.txt"
+                    if isfile(autoloadPath) then
+                        local loadName = readfile(autoloadPath)
+                        loadName = string.gsub(loadName, "[\n\r]", "")
+                        if loadName == ConfigName then
+                            isAutoloadingThis = true
+                        end
+                    end
+                    
+                    shared.ScootConfigIsLoading = true
+                    AutoloadToggle:Set(isAutoloadingThis)
+                    shared.ScootConfigIsLoading = false
+                end
+            end
+        })
+
+        local ConfigButtons = ConfigSection:Button()
+        local ConfigButtons2 = ConfigSection:Button()
+
+        ConfigButtons:Add("Create Config", function()
+            if ConfigName ~= "" then
+                local path = Library.Folders.Configs .. "/" .. ConfigName .. ".json"
+                if isfile(path) then
+                    Library:Notification("Error", "Config file " .. ConfigName .. ".json already exists.", 3)
+                else
+                    writefile(path, Library:GetConfig())
+                    Library:Notification("Success", "Created configuration " .. ConfigName .. ".json", 3)
+                    ConfigDropdown:Refresh(getConfigLists(), false)
+                end
+            else
+                Library:Notification("Error", "Please enter a valid config name to create.", 3)
+            end
+        end)
+
+        ConfigButtons:Add("Save Config", function()
+            if ConfigName ~= "" then
+                writefile(Library.Folders.Configs .. "/" .. ConfigName .. ".json", Library:GetConfig())
+                Library:Notification("Success", "Saved configuration to " .. ConfigName .. ".json", 3)
+                ConfigDropdown:Refresh(getConfigLists(), false)
+            else
+                Library:Notification("Error", "Please enter a valid config name to save.", 3)
+            end
+        end)
+        
+        ConfigButtons2:Add("Load Config", function()
+            if ConfigName ~= "" then
+                local path = Library.Folders.Configs .. "/" .. ConfigName .. ".json"
+                if isfile(path) then
+                    shared.ScootConfigIsLoading = true
+                    local Success, Result = pcall(function() return Library:LoadConfig(readfile(path)) end)
+                    shared.ScootConfigIsLoading = false
+                    
+                    if Success then
+                        Library:Notification("Success", "Loaded configuration from " .. ConfigName .. ".json", 3)
+                        
+                        if AutoloadToggle then
+                            local isAutoloadingThis = false
+                            local autoloadPath = Library.Folders.Configs .. "/autoload.txt"
+                            if isfile(autoloadPath) then
+                                local loadName = readfile(autoloadPath)
+                                loadName = string.gsub(loadName, "[\n\r]", "")
+                                if loadName == ConfigName then
+                                    isAutoloadingThis = true
+                                end
+                            end
+                            shared.ScootConfigIsLoading = true
+                            AutoloadToggle:Set(isAutoloadingThis)
+                            shared.ScootConfigIsLoading = false
+                        end
+                    else
+                        Library:Notification("Error", "Failed to load config: " .. tostring(Result), 5)
+                    end
+                else
+                    Library:Notification("Error", "Config file " .. ConfigName .. ".json does not exist.", 3)
+                end
+            else
+                Library:Notification("Error", "Please enter a valid config name to load.", 3)
+            end
+        end)
+
+        ConfigButtons2:Add("Delete Config", function()
+            if ConfigName ~= "" then
+                local path = Library.Folders.Configs .. "/" .. ConfigName .. ".json"
+                if isfile(path) then
+                    delfile(path)
+                    Library:Notification("Success", "Deleted configuration " .. ConfigName .. ".json", 3)
+                    ConfigDropdown:Refresh(getConfigLists(), false)
+                else
+                    Library:Notification("Error", "Config file " .. ConfigName .. ".json does not exist.", 3)
+                end
+            else
+                Library:Notification("Error", "Please select a config to delete.", 3)
+            end
+        end)
+
+        AutoloadToggle = ConfigSection:Toggle({
+            Name = "Autoload Selected Config",
+            Default = false,
+            Callback = function(Value)
+                if shared.ScootConfigIsLoading then return end
+
+                if Value then
+                    if ConfigName ~= "" then
+                        writefile(Library.Folders.Configs .. "/autoload.txt", ConfigName)
+                        pcall(function() writefile(Library.Folders.Configs .. "/" .. ConfigName .. ".json", Library:GetConfig()) end)
+                        Library:Notification("Success", "Saved configuration and set " .. ConfigName .. " to autoload.", 3)
+                    else
+                        Library:Notification("Error", "Select a config first.", 3)
+                        if AutoloadToggle then 
+                            shared.ScootConfigIsLoading = true
+                            AutoloadToggle:Set(false) 
+                            shared.ScootConfigIsLoading = false
+                        end
+                    end
+                else
+                    if isfile(Library.Folders.Configs .. "/autoload.txt") then
+                        local loadName = readfile(Library.Folders.Configs .. "/autoload.txt")
+                        loadName = string.gsub(loadName, "[\n\r]", "")
+                        if loadName == ConfigName then
+                            delfile(Library.Folders.Configs .. "/autoload.txt")
+                            Library:Notification("Success", "Disabled autoload.", 3)
+                        end
+                    end
+                end
+            end
+        })
+    end
 end
 
 --// ESP LOGIC STARTS HERE //--
@@ -366,28 +537,45 @@ local RunService = game:GetService("RunService")
 local espCache = {}
 local boxCache = {}
 
-local function checkPartVisible(char, part)
+local globalParams = RaycastParams.new()
+globalParams.FilterType = Enum.RaycastFilterType.Blacklist
+local globalIgnore = {}
+
+local function checkPartVisible(part)
 	local origin = camera.CFrame.Position
-	local direction = (part.Position - origin)
-	local params = RaycastParams.new()
-	local ignoreList = {player.Character}
-	params.FilterType = Enum.RaycastFilterType.Blacklist
-	
-	while true do
-		params.FilterDescendantsInstances = ignoreList
-		local ray = workspace:Raycast(origin, direction, params)
-		if ray then
-			if ray.Instance:IsA("BasePart") and ray.Instance.Transparency >= 1 then
-				table.insert(ignoreList, ray.Instance)
-				continue
+	local cf = part.CFrame
+	local size = part.Size / 2
+	local corners = {
+		part.Position,
+		cf * Vector3.new(size.X, size.Y, 0),
+		cf * Vector3.new(-size.X, size.Y, 0),
+		cf * Vector3.new(0, -size.Y, size.Z),
+		cf * Vector3.new(0, -size.Y, -size.Z)
+	}
+
+	for _, targetPos in ipairs(corners) do
+		local direction = (targetPos - origin)
+		local pointVisible = false
+
+		while true do
+			globalParams.FilterDescendantsInstances = globalIgnore
+			local ray = workspace:Raycast(origin, direction, globalParams)
+			if ray then
+				if ray.Instance:IsA("BasePart") and ray.Instance.Transparency >= 1 then
+					table.insert(globalIgnore, ray.Instance)
+					continue
+				end
+				pointVisible = false
+				break
+			else
+				pointVisible = true
+				break
 			end
-			if ray.Instance:IsDescendantOf(char) then
-				return true
-			end
-			return false
 		end
-		return true
+
+		if pointVisible then return true end
 	end
+	return false
 end
 
 local function setup(plr)
@@ -414,9 +602,15 @@ Players.PlayerAdded:Connect(setup)
 
 -- ESP LOOP
 RunService.RenderStepped:Connect(function()
+	globalIgnore = {}
+	for _, p in pairs(Players:GetPlayers()) do
+		if p.Character then table.insert(globalIgnore, p.Character) end
+	end
+
 	for plr, data in pairs(espCache) do
 		local char = plr.Character
 		local root = char and char:FindFirstChild("HumanoidRootPart")
+		local humanoid = char and char:FindFirstChildOfClass("Humanoid")
 		local box = boxCache[plr]
 
 		if data.h and data.h.Parent then
@@ -424,7 +618,7 @@ RunService.RenderStepped:Connect(function()
 			data.h = nil
 		end
 
-		if not espStates.Enabled or not char then
+		if not espStates.Enabled or not char or not humanoid or humanoid.Health <= 0 then
 			if data.hList then for _, h in pairs(data.hList) do h.Enabled = false end end
 			if data.g.Parent ~= nil then data.g.Parent = nil end
 			box.Visible = false
@@ -455,52 +649,62 @@ RunService.RenderStepped:Connect(function()
 		local anyVisible = false
 		if not data.hList then data.hList = {} end
 
-		if (espStates.WallCheck or espStates.WallCheckTurnoff) then
+		if espStates.WallCheckTurnoff then
+			if data.h and data.h.Parent then
+				data.h:Destroy()
+				data.h = nil
+			end
+			
 			for _, part in ipairs(char:GetDescendants()) do
 				if part:IsA("BasePart") and part.Transparency < 1 then
-					local isVis = checkPartVisible(char, part)
+					local isVis = checkPartVisible(part)
 					if isVis then anyVisible = true end
 					
-					local h = data.hList[part]
-					if not h then
-						h = Instance.new("Highlight")
-						h.OutlineTransparency = 1
-						h.FillTransparency = 0.5
-						h.Adornee = part
-						h.Parent = part
-						data.hList[part] = h
+					local hl = data.hList[part]
+					if not hl then
+						hl = Instance.new("Highlight")
+						hl.OutlineTransparency = 1
+						hl.FillTransparency = 0.5
+						hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+						hl.Adornee = part
+						hl.Parent = part
+						data.hList[part] = hl
 					end
 					
-					if espStates.WallCheckTurnoff and not isVis then
-						h.Enabled = false
-					else
-						h.Enabled = true
-						h.FillColor = isVis and defaultColor or Color3.new(1, 1, 1)
-					end
+					hl.Enabled = true
+					hl.FillColor = isVis and defaultColor or Color3.new(1, 1, 1)
 				end
 			end
 		else
-			for _, part in ipairs(char:GetDescendants()) do
-				if part:IsA("BasePart") and part.Transparency < 1 then
-					local h = data.hList[part]
-					if not h then
-						h = Instance.new("Highlight")
-						h.OutlineTransparency = 1
-						h.FillTransparency = 0.5
-						h.Adornee = part
-						h.Parent = part
-						data.hList[part] = h
-					end
-					h.Enabled = true
-					h.FillColor = defaultColor
-				end
+			for part, hl in pairs(data.hList) do
+				hl:Destroy()
+				data.hList[part] = nil
 			end
-			anyVisible = true
+            
+			if not data.h or not data.h.Parent then
+				local hl = Instance.new("Highlight")
+				hl.OutlineTransparency = 1
+				hl.FillTransparency = 0.5
+				hl.Adornee = char
+				hl.Parent = char
+				data.h = hl
+			end
+            
+			data.h.Enabled = true
+			data.h.FillColor = defaultColor
+            
+			if espStates.WallCheck then
+				data.h.DepthMode = Enum.HighlightDepthMode.Occluded
+				anyVisible = true
+			else
+				data.h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+				anyVisible = true
+			end
 		end
 
-		for part, h in pairs(data.hList) do
+		for part, hl in pairs(data.hList) do
 			if not part or not part.Parent or not part:IsDescendantOf(char) then
-				h:Destroy()
+				hl:Destroy()
 				data.hList[part] = nil
 			end
 		end
@@ -524,7 +728,7 @@ RunService.RenderStepped:Connect(function()
 				local width = size / 2
 				box.Size = Vector2.new(width, size)
 				box.Position = Vector2.new(pos.X - width/2, pos.Y - size/2)
-				box.Color = color
+				box.Color = defaultColor
 				box.Visible = true
 			else
 				box.Visible = false
@@ -543,19 +747,15 @@ local function visibleCheck(part)
 	local origin = camera.CFrame.Position
 	local direction = (part.Position - origin)
 
-	local params = RaycastParams.new()
-	local ignoreList = {player.Character}
-	params.FilterType = Enum.RaycastFilterType.Blacklist
-
 	while true do
-		params.FilterDescendantsInstances = ignoreList
-		local ray = workspace:Raycast(origin, direction, params)
+		globalParams.FilterDescendantsInstances = globalIgnore
+		local ray = workspace:Raycast(origin, direction, globalParams)
 		if ray then
 			if ray.Instance:IsA("BasePart") and ray.Instance.Transparency >= 1 then
-				table.insert(ignoreList, ray.Instance)
+				table.insert(globalIgnore, ray.Instance)
 				continue
 			end
-			return ray.Instance:IsDescendantOf(part.Parent)
+			return false
 		end
 		return true
 	end
@@ -585,6 +785,9 @@ RunService:BindToRenderStep("Aimbot", Enum.RenderPriority.Camera.Value + 1, func
 
 		for _, v in pairs(Players:GetPlayers()) do
 			if v ~= player and v.Character then
+				local humanoid = v.Character:FindFirstChildOfClass("Humanoid")
+				if not humanoid or humanoid.Health <= 0 then continue end
+				
 				local part
 				
 				if aimbotStates.Target == "HumanoidRootPart" then
@@ -677,4 +880,37 @@ RunService:BindToRenderStep("Aimbot", Enum.RenderPriority.Camera.Value + 1, func
 end)
 --// AIMBOT LOGIC ENDS HERE //--
 
-Library:Notification("Loaded!", "Menu took "..string.format("%.4f", os.clock() - LoadTick).." seconds to load", 5)
+--// AUTOLOAD LOGIC //--
+local autoloadPath = Library.Folders.Configs .. "/autoload.txt"
+if isfile(autoloadPath) then
+    local loadName = readfile(autoloadPath)
+    loadName = string.gsub(loadName, "[\n\r]", "")
+    local path = Library.Folders.Configs .. "/" .. loadName .. ".json"
+    
+    if isfile(path) then
+        shared.ScootConfigIsLoading = true
+        local Success, Result = pcall(function() return Library:LoadConfig(readfile(path)) end)
+        shared.ScootConfigIsLoading = false
+        
+        if Success then
+            Library:Notification("Autoload", "Successfully loaded " .. loadName, 5)
+            
+            -- Sync dropdown so visually the UI highlights the autoloaded config
+            pcall(function()
+                if Library.Flags["SelectedCustomConfig"] then
+                    shared.ScootConfigIsLoading = true
+                    Library.Flags["SelectedCustomConfig"]:Set(loadName)
+                    shared.ScootConfigIsLoading = false
+                end
+            end)
+        else
+            warn("Autoload error: " .. tostring(Result))
+        end
+    end
+end
+
+Library:Notification("Loaded!", "Press 'P' to show/hide the gui. Menu took "..string.format("%.4f", os.clock() - LoadTick).." seconds to load", 5)
+
+if Window and Window.SetOpen then
+    Window:SetOpen(false)
+end
