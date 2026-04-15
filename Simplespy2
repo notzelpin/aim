@@ -248,7 +248,7 @@ local TextLabel = Create("TextLabel",{Parent = ToolTip,BackgroundColor3 = Color3
 
 
 -- cooldown options
-local cooldowns = {0.01, 0.1, 0.5, 1}
+local cooldowns = {0.01, 0.1, 0.5, 1, 5, 10}
 local cooldownIndex = 1  -- starts at 0.01
 local currentCooldown = cooldowns[cooldownIndex]
 
@@ -2293,15 +2293,66 @@ newButton(
     function() return "Click to clear logs" end,
     function()
         TextLabel.Text = "Clearing..."
-        clear(logs)
-        for i,v in next, LogList:GetChildren() do
+        local newLogs = {}
+        local newRemoteLogs = {}
+        
+        for i, v in next, LogList:GetChildren() do
             if not v:IsA("UIListLayout") then
-                v:Destroy()
+                local isLooped = false
+                for _, log in next, logs do
+                    if log.Log == v then
+                        for _, loopData in next, savedRemotes do
+                            if loopData.code == log.GenScript and not loopData.deleted then
+                                isLooped = true
+                                table.insert(newLogs, log)
+                                break
+                            end
+                        end
+                        -- Check current codebox string if it's the actively selected remote
+                        if not isLooped and selected == log then
+                            for _, loopData in next, savedRemotes do
+                                if loopData.code == codebox:getString() and not loopData.deleted then
+                                    isLooped = true
+                                    table.insert(newLogs, log)
+                                    break
+                                end
+                            end
+                        end
+                        break
+                    end
+                end
+                
+                if not isLooped then
+                    v:Destroy()
+                end
             end
         end
-        codebox:setRaw("")
-        selected = nil
-        TextLabel.Text = "Logs cleared!"
+        
+        for _, rl in next, remoteLogs do
+            if rl[2] and rl[2].Parent then
+                table.insert(newRemoteLogs, rl)
+            end
+        end
+        
+        logs = newLogs
+        remoteLogs = newRemoteLogs
+        
+        if selected then
+            local isSelectedLooped = false
+            for _, loopData in next, savedRemotes do
+                if (loopData.code == selected.GenScript or loopData.code == codebox:getString()) and not loopData.deleted then
+                    isSelectedLooped = true
+                    break
+                end
+            end
+            if not isSelectedLooped then
+                codebox:setRaw("")
+                selected = nil
+            end
+        else
+            codebox:setRaw("")
+        end
+        TextLabel.Text = "Logs cleared (kept looped)!"
     end
 )
 
