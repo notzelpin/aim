@@ -14,6 +14,20 @@ local _TS = game:GetService('TweenService');
 
 local LP = Players.LocalPlayer
 
+local function checkPlayers()
+	if F.PlayerCountKick and #Players:GetPlayers() > 1 then
+		LP:Kick("Server player count > 1")
+	end
+end
+
+Players.PlayerAdded:Connect(function(plr)
+	if F.PlayerCountKick then
+		LP:Kick("A player joined: " .. tostring(plr.Name))
+	end
+end)
+
+shared.KickIfEnabled = checkPlayers
+
 local _writefile = writefile
 local _readfile = readfile
 local CONFIG_FILE = "celina_sailorpiece.json"
@@ -187,6 +201,7 @@ local F = {
 	KillAuraRange = 200,
 	KillAuraHP = 50,
 	AntiKnockback = false,
+	PlayerCountKick = false,
 	CustomWalkSpeed = false,
 	WalkSpeedValue = 16,
 	CustomJumpPower = false,
@@ -220,6 +235,7 @@ local F = {
 	AutoReplayTower = false,
 	PityBossEnabled = false,
 	PityUseDiff = "Normal",
+	CosmicBeing = false,
 }
 local SaveableKeys = {
 	"AutoFarmLevel",
@@ -345,6 +361,7 @@ local SaveableKeys = {
 	"KillAuraRange",
 	"KillAuraHP",
 	"AntiKnockback",
+	"PlayerCountKick",
 	"CustomWalkSpeed",
 	"WalkSpeedValue",
 	"CustomJumpPower",
@@ -380,6 +397,7 @@ local SaveableKeys = {
 	"PityUseDiff",
 	"PityBuildBosses",
 	"PityUseBoss",
+	"CosmicBeing",
 }
 
 local function SaveConfig()
@@ -6546,19 +6564,53 @@ do
 					local maxRange = F.KillAuraRange or 200
 					local nf = fn.GetNPCFolder()
 					if nf then
-						for _, m in ipairs(nf:GetChildren()) do
-							if m:IsA("Model") then
-								local hum = m:FindFirstChildOfClass("Humanoid")
+						local priorityTarget = nil
+						if F.CosmicBeing then
+							local boss = WS:FindFirstChild("NPCs") and WS.NPCs:FindFirstChild("CosmicBeingBoss_Normal")
+							if boss and boss:IsA("Model") then
+								local hum = boss:FindFirstChildOfClass("Humanoid")
 								if hum and hum.Health > 0 then
 									local hpPct = (hum.Health / hum.MaxHealth) * 100
-									local threshold = F.KillAuraHP or 50
-									if hpPct <= threshold then
-										pcall(function()
-											local pos = m:GetPivot().Position
-											if (hrp.Position - pos).Magnitude <= maxRange then
-												_killAuraRemote:FireServer(pos)
+									if hpPct <= (F.KillAuraHP or 50) and (hrp.Position - boss:GetPivot().Position).Magnitude <= maxRange then
+										priorityTarget = boss
+									end
+								end
+							end
+							if not priorityTarget then
+								for _, m in ipairs(nf:GetChildren()) do
+									if m:IsA("Model") and m.Name:lower():find("cosmicbeing") then
+										local hum = m:FindFirstChildOfClass("Humanoid")
+										if hum and hum.Health > 0 then
+											local hpPct = (hum.Health / hum.MaxHealth) * 100
+											if hpPct <= (F.KillAuraHP or 50) and (hrp.Position - m:GetPivot().Position).Magnitude <= maxRange then
+												priorityTarget = m
+												break
 											end
-										end)
+										end
+									end
+								end
+							end
+						end
+
+						if priorityTarget then
+							pcall(function()
+								_killAuraRemote:FireServer(priorityTarget:GetPivot().Position)
+							end)
+						else
+							for _, m in ipairs(nf:GetChildren()) do
+								if m:IsA("Model") then
+									local hum = m:FindFirstChildOfClass("Humanoid")
+									if hum and hum.Health > 0 then
+										local hpPct = (hum.Health / hum.MaxHealth) * 100
+										local threshold = F.KillAuraHP or 50
+										if hpPct <= threshold then
+											pcall(function()
+												local pos = m:GetPivot().Position
+												if (hrp.Position - pos).Magnitude <= maxRange then
+													_killAuraRemote:FireServer(pos)
+												end
+											end)
+										end
 									end
 								end
 							end
@@ -7742,6 +7794,18 @@ do
 		end,
 	}).Link
 		:AddHelper({ Text = "Prevents disconnect" })
+	FPSec:AddToggle({
+		Name = "Player Count Kick",
+		Flag = "PlayerCountKick",
+		Default = F.PlayerCountKick,
+		Callback = function(v)
+			F.PlayerCountKick = v
+			if v then
+				shared.KickIfEnabled()
+			end
+		end,
+	}).Link
+		:AddHelper({ Text = "Kicks you if player count > 1 or someone joins" })
 	_glowButton(FPSec, "Scan All NPCs", function()
 		local isl = S.CurIsland or fn.IslandForLevel(fn.GetLevel())
 		local en = fn.FindEnemies(isl)
@@ -8495,6 +8559,14 @@ do
 		Default = F.BossNotify,
 		Callback = function(v)
 			F.BossNotify = v
+		end,
+	})
+	BSec:AddToggle({
+		Name = "Cosmic Being",
+		Flag = "CosmicBeing",
+		Default = F.CosmicBeing,
+		Callback = function(v)
+			F.CosmicBeing = v
 		end,
 	})
 	for _, bDef in ipairs(S.Bosses) do
